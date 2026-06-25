@@ -1,5 +1,10 @@
 import streamlit as st
+
 from llm.gemini_client import GeminiClient
+
+# ---------------------------------
+# Page Configuration
+# ---------------------------------
 
 st.set_page_config(
     page_title="Chat Playground",
@@ -7,35 +12,64 @@ st.set_page_config(
     layout="wide"
 )
 
+# ---------------------------------
+# Sidebar
+# ---------------------------------
+
+with st.sidebar:
+
+    st.title("⚙ Settings")
+
+    model = st.selectbox(
+        "Model",
+        [
+            "Gemini 2.5 Flash"
+        ]
+    )
+
+    st.divider()
+
+    if st.button("🗑 Clear Chat", use_container_width=True):
+
+        st.session_state.messages = []
+
+        st.rerun()
+
+# ---------------------------------
+# Main Title
+# ---------------------------------
+
 st.title("💬 Chat Playground")
 
-st.write("Interact with Google's Gemini model.")
+st.caption("Interact with Large Language Models")
 
-# -------------------------
+# ---------------------------------
 # Session State
-# -------------------------
+# ---------------------------------
 
 if "messages" not in st.session_state:
+
     st.session_state.messages = []
 
-# -------------------------
-# Display Chat History
-# -------------------------
+# ---------------------------------
+# Display Previous Messages
+# ---------------------------------
 
 for message in st.session_state.messages:
 
     with st.chat_message(message["role"]):
+
         st.markdown(message["content"])
 
-# -------------------------
-# User Input
-# -------------------------
+# ---------------------------------
+# Chat Input
+# ---------------------------------
 
-prompt = st.chat_input("Ask Gemini anything...")
+prompt = st.chat_input("Type your message...")
 
-# -------------------------
+# ---------------------------------
 # Generate Response
-# -------------------------
+# ---------------------------------
 
 if prompt:
 
@@ -47,21 +81,41 @@ if prompt:
     )
 
     with st.chat_message("user"):
+
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
 
-        with st.spinner("Thinking..."):
+        with st.spinner("Gemini is thinking..."):
 
             client = GeminiClient()
 
-            response = client.generate_response(prompt)
+            result = client.generate_response(prompt)
 
-            st.markdown(response)
+            st.markdown(result["text"])
+
+            st.divider()
+
+            col1, col2, col3 = st.columns(3)
+
+            col1.metric(
+                "⏱ Response Time",
+                f'{result["response_time"]} sec'
+            )
+
+            col2.metric(
+                "📝 Words",
+                result["word_count"]
+            )
+
+            col3.metric(
+                "🔠 Characters",
+                result["character_count"]
+            )
 
     st.session_state.messages.append(
         {
             "role": "assistant",
-            "content": response
+            "content": result["text"]
         }
     )
