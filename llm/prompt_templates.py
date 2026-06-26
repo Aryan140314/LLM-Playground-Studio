@@ -1,30 +1,69 @@
-def zero_shot_prompt(question):
+"""
+Prompt Engineering Templates
 
-    return question
+This file contains different prompt engineering
+strategies used in Prompt Lab.
+"""
 
 
-def few_shot_prompt(question):
+class PromptTemplates:
 
-    return f"""
-Example
+    @staticmethod
+    def normal(question: str):
 
-Question:
-What is AI?
+        return question
 
-Answer:
-Artificial Intelligence is ...
+    @staticmethod
+    def zero_shot(question: str):
 
-Now answer:
+        return f"""
+You are a helpful AI assistant.
+
+Explain the following question in simple English.
 
 Question:
 {question}
 """
 
+    @staticmethod
+    def few_shot(question: str):
 
-def cot_prompt(question):
+        return f"""
+Example 1
 
-    return f"""
-Think step by step.
+Question:
+What is Artificial Intelligence?
+
+Answer:
+Artificial Intelligence is the simulation of human intelligence by machines.
+
+------------------------------------------------------
+
+Example 2
+
+Question:
+What is Machine Learning?
+
+Answer:
+Machine Learning is a branch of AI that enables computers to learn from data.
+
+------------------------------------------------------
+
+Now answer the following question.
+
+Question:
+{question}
+"""
+
+    @staticmethod
+    def chain_of_thought(question: str):
+
+        return f"""
+You are an AI Tutor.
+
+Think carefully.
+
+Explain the answer step by step.
 
 Question:
 
