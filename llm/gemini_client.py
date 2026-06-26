@@ -1,5 +1,5 @@
 import time
-import google.generativeai as genai
+from google import genai
 
 from config.api_keys import GEMINI_API_KEY
 
@@ -10,11 +10,7 @@ class GeminiClient:
     """
 
     def __init__(self):
-        genai.configure(api_key=GEMINI_API_KEY)
-
-        self.model = genai.GenerativeModel(
-            "gemini-2.5-flash"
-        )
+        self.client = genai.Client(api_key=GEMINI_API_KEY)
 
     def generate_response(self, prompt: str):
         """
@@ -24,7 +20,10 @@ class GeminiClient:
         try:
             start_time = time.time()
 
-            response = self.model.generate_content(prompt)
+            response = self.client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt
+            )
 
             end_time = time.time()
 
