@@ -35,3 +35,7 @@ requests>=2.32.4
 
 # Progress Bars
 tqdm>=4.67.1
+
+# FastAPI Backend
+fastapi>=0.111.0
+uvicorn>=0.30.0
