@@ -1,25 +1,55 @@
-# Virtual Environment
+# Virtual Environments
 .venv/
 venv/
+env/
+/backend/.venv/
+/backend/venv/
 
-# Python
-__pycache__/
+# Python Caches & Build Files
+**/__pycache__/
 *.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
 
-# Environment Variables
+# Environment Keys
 .env
+.env.*
+!.env.example
+/backend/.env
 
-# Streamlit
+# Next.js / Node.js
+node_modules/
+.next/
+out/
+build/
+dist/
+.turbo/
+.vercel/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Streamlit (Old Backup files)
 .streamlit/
 
-# VS Code
+# IDEs & Editor configs
 .vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
 
-# Jupyter
+# Jupyter Notebooks
 .ipynb_checkpoints/
 
-# macOS
+# OS-Specific Files
 .DS_Store
-
-# Windows
 Thumbs.db
+desktop.ini
