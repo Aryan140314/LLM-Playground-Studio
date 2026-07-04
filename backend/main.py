@@ -23,6 +23,13 @@ from sklearn.manifold import TSNE
 from sklearn.cluster import KMeans
 import numpy as np
 
+# RAG / Search Imports (Phase 2)
+from core.embeddings.embedding_service import EmbeddingService
+from core.vectordb.chroma_manager import ChromaManager
+from core.search.bm25_search import BM25Search
+from core.search.hybrid_search import HybridSearch
+from typing import Dict, Any
+
 app = FastAPI(
     title="LLM Playground Studio API",
     description="Backend API services supporting LLM Playground Studio",
@@ -37,6 +44,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ------------------------------------------------
+# RAG Search Services (Phase 2)
+# ------------------------------------------------
+rag_embedding_service = EmbeddingService()
+rag_db_path = os.path.join(os.path.dirname(__file__), "chroma_db_api")
+rag_chroma_manager = ChromaManager(db_path=rag_db_path, collection_name="master_collection")
+rag_bm25_search = BM25Search()
+rag_hybrid_search = HybridSearch(rag_embedding_service, rag_chroma_manager, rag_bm25_search)
 
 # ------------------------------------------------
 # In-Memory Run History Telemetry (Powers Analytics)
@@ -84,6 +100,23 @@ class SemanticSearchRequest(BaseModel):
     query: str
     sentences: List[str]
     model_name: str
+
+# Phase 2 Search Schemas
+class RagEmbedRequest(BaseModel):
+    texts: List[str]
+
+class RagSearchRequest(BaseModel):
+    query: str
+    top_k: int = 5
+
+class RagInsertDocument(BaseModel):
+    id: str
+    title: str
+    content: str
+    metadata: Dict[str, Any] = {}
+
+class RagInsertRequest(BaseModel):
+    documents: List[RagInsertDocument]
 
 # ------------------------------------------------
 # API Routes
@@ -394,6 +427,69 @@ async def api_reset_analytics():
     global run_history
     run_history = []
     return {"message": "Run history telemetry cleared successfully"}
+
+# ==========================================
+# Phase 2: RAG / Search API Endpoints
+# ==========================================
+@app.post("/api/embed")
+async def api_embed_phase2(req: RagEmbedRequest):
+    try:
+        embeddings = rag_embedding_service.generate_batch_embeddings(req.texts)
+        return {"status": "success", "count": len(embeddings)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/insert")
+async def api_insert_phase2(req: RagInsertRequest):
+    try:
+        ids = [doc.id for doc in req.documents]
+        contents = [doc.content for doc in req.documents]
+        metadatas = [doc.metadata for doc in req.documents]
+        
+        embeddings = rag_embedding_service.generate_batch_embeddings(contents)
+        rag_chroma_manager.insert_embeddings(ids=ids, embeddings=embeddings, documents=contents, metadatas=metadatas)
+        
+        dict_docs = [{"id": d.id, "title": d.title, "content": d.content, **d.metadata} for d in req.documents]
+        rag_bm25_search.add_documents(dict_docs)
+        
+        return {"status": "success", "inserted": len(req.documents)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/chroma")
+async def api_chroma_phase2(req: RagSearchRequest):
+    try:
+        query_emb = rag_embedding_service.generate_embedding(req.query)
+        results = rag_chroma_manager.query([query_emb], n_results=req.top_k)
+        
+        formatted = []
+        if results['ids'] and results['ids'][0]:
+            for i in range(len(results['ids'][0])):
+                formatted.append({
+                    "id": results['ids'][0][i],
+                    "content": results['documents'][0][i],
+                    "score": round(1.0 - results['distances'][0][i], 4),
+                    "metadata": results['metadatas'][0][i] if results['metadatas'] else {}
+                })
+        return {"status": "success", "results": formatted}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/search")
+async def api_search_phase2(req: RagSearchRequest):
+    try:
+        results = rag_bm25_search.search(req.query, top_k=req.top_k)
+        return {"status": "success", "results": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/hybrid")
+async def api_hybrid_phase2(req: RagSearchRequest):
+    try:
+        results = rag_hybrid_search.search(req.query, top_k=req.top_k)
+        return {"status": "success", "results": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
