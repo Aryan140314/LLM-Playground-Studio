@@ -53,3 +53,7 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Vector Databases and Local Text Outputs
+/backend/chroma_db_*/
+/backend/out*.txt

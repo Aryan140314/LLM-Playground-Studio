@@ -39,3 +39,6 @@ tqdm>=4.67.1
 # FastAPI Backend
 fastapi>=0.111.0
 uvicorn>=0.30.0
+
+# Vector Database
+chromadb>=1.5.0
