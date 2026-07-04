@@ -1,6 +1,6 @@
 # LLM Playground Studio
 
-LLM Playground Studio is an educational and experimental suite built to explore, analyze, and compare the core mechanics of Large Language Models (LLMs). The project utilizes a decoupled architecture consisting of a **Python FastAPI backend** executing local ML computations & LLM client queries, and a **Next.js (React) frontend** providing an interactive telemetry dashboard.
+LLM Playground Studio is an educational and experimental suite built to explore, analyze, and compare the core mechanics of Large Language Models (LLMs). The project utilizes a decoupled architecture consisting of a **Python FastAPI backend** executing local ML computations, vector database management, and LLM client queries, alongside a **Next.js (React) frontend** providing an interactive dashboard and search explorer.
 
 ---
 
@@ -13,31 +13,34 @@ graph LR
     subgraph FastAPI Backend
         FastAPI <--> Tokenizer[Tokenizer Utils\nBPE, WordPiece, SentencePiece]
         FastAPI <--> Embeddings[Embedding Utils\nSentenceTransformers, PCA, K-Means]
+        FastAPI <--> SearchEngines[Search Engines\nChromaDB, FAISS, BM25]
         FastAPI <--> Clients[LLM Clients\nGemini, GPT, Claude]
         FastAPI <--> Telemetry[Telemetry Log\nIn-Memory Run History]
     end
+    
+    SearchEngines <--> Chroma[(ChromaDB\nVector Storage)]
 ```
 
-### 1. Backend Core (Python & Local ML)
-The backend manages all CPU/GPU heavy computations, including subword parsing, vector generations, similarity matrix math, and dimensionality reduction projections:
-*   **Tokenizers:** Local tokenizer loaders for **GPT** (`tiktoken` / BPE), **BERT** (`transformers.AutoTokenizer` / WordPiece), and **SentencePiece** (`t5-small` / Unigram).
-*   **Embeddings:** Local vector generation using Hugging Face's `sentence-transformers` (supporting `all-MiniLM-L6-v2`, `all-mpnet-base-v2`, and multilingual variants).
-*   **Dimensionality Reduction:** Uses `scikit-learn` to project high-dimensional embeddings (384 or 768 dimensions) down to 2D coordinates using **PCA (Principal Component Analysis)** and **t-SNE** for scatter plot visualizations.
-*   **Semantic Clustering:** Implements **K-Means Clustering** to segment text representations into distinct clusters based on vector distances.
-*   **Vector Similarities:** Calculates pairwise similarity tables and rankings via **Cosine Similarity** metrics.
+### 1. Backend Core & Search Architecture (Python & Local ML)
+The backend manages all CPU/GPU heavy computations, vector storage, and search ranking:
+*   **Tokenizers:** Local tokenizer loaders for **GPT** (`tiktoken`), **BERT** (`AutoTokenizer`), and **SentencePiece** (`t5-small`).
+*   **Embeddings:** Local vector generation using Hugging Face's `sentence-transformers` (e.g., `all-MiniLM-L6-v2`).
+*   **Vector Databases (Semantic Search):** Utilizes **ChromaDB** for persistent semantic storage and **FAISS** for blazing-fast in-memory vector similarity searches.
+*   **Lexical Search:** Implements **BM25** (`rank_bm25`) for traditional exact-keyword matching and ranking.
+*   **Hybrid Search:** Merges Semantic (ChromaDB) and Lexical (BM25) search results using the mathematical **Reciprocal Rank Fusion (RRF)** algorithm to yield state-of-the-art information retrieval.
+*   **Dimensionality Reduction:** Uses `scikit-learn` (PCA, t-SNE) and K-Means to project high-dimensional embeddings down to 2D coordinates for scatter plot visualization.
 
 ### 2. Multi-Provider LLM Clients
 Connects directly to major LLM providers to fetch generations and performance statistics:
-*   **Google Gemini Client:** Utilizes the modern `google-genai` SDK to query `gemini-2.5-flash`.
-*   **OpenAI Client:** Utilizes the `openai` SDK to query `gpt-4o-mini`.
-*   **Anthropic Claude Client:** Utilizes the `anthropic` SDK to query `claude-3-5-sonnet-latest`.
-*   **API Telemetry:** Tracks latency speeds, input prompt lengths, response word counts, and character volumes.
-*   **Simulated Demo Mode:** Includes mock fallbacks for all three LLM clients, allowing developer demonstrations without active API keys or offline.
+*   **Google Gemini Client:** Utilizes the `google-genai` SDK (`gemini-2.5-flash`).
+*   **OpenAI Client:** Utilizes the `openai` SDK (`gpt-4o-mini`).
+*   **Anthropic Claude Client:** Utilizes the `anthropic` SDK (`claude-3-5-sonnet-latest`).
+*   **Simulated Demo Mode:** Includes mock fallbacks for all three LLM clients, allowing developer demonstrations without active API keys.
 
-### 3. Frontend Client Interface (Overview)
+### 3. Frontend Client Interface
 *   An interactive client web interface built with **Next.js App Router**, **TypeScript**, and **TailwindCSS**.
+*   **Search Explorer UI:** A dedicated interactive dashboard to benchmark and compare Semantic, Keyword, and Hybrid search algorithms side-by-side.
 *   Implements customized Recharts widgets for latency distributions, subword length checks, and prompt strategies.
-*   Maintains global simulation states via React Context and connects to the FastAPI backend using a centralized API utility.
 
 ---
 
@@ -45,17 +48,24 @@ Connects directly to major LLM providers to fetch generations and performance st
 
 The backend server exposes the following REST endpoints:
 
-| Endpoint | Method | Payload Schema | Description |
-| :--- | :--- | :--- | :--- |
-| `/api/chat` | `POST` | `{ prompt, simulate }` | Generates a response from Gemini and records execution logs. |
-| `/api/prompt-lab` | `POST` | `{ question, strategy, simulate }` | Renders prompt engineering templates (Normal, Zero-Shot, Few-Shot, CoT) and fetches results. |
-| `/api/tokenize` | `POST` | `{ text, tokenizer_type, model_name, include_special_tokens }` | Tokenizes text and returns subword lists, integer IDs, and length/efficiency metrics. |
-| `/api/embeddings` | `POST` | `{ sentences, model_name, dim_algo, enable_cluster, n_clusters }` | Generates text vectors, similarity matrix heatmaps, K-Means clusters, and 2D scatter coordinates. |
-| `/api/semantic-search` | `POST` | `{ query, sentences, model_name }` | Embeds a search query and ranks the sentences by cosine similarity. |
-| `/api/compare` | `POST` | `{ prompt, simulate }` | Queries Gemini, OpenAI, and Claude concurrently, returning comparative latency and text results. |
-| `/api/analytics` | `GET` | *None* | Returns the run telemetry history array. |
-| `/api/analytics/prefill` | `POST` | *None* | Prefills the log database with 30 mock records for demonstration. |
-| `/api/analytics/reset` | `POST` | *None* | Clears all telemetry records in the current session. |
+### Search & Vector Endpoints (Phase 2)
+| Endpoint | Method | Description |
+| :--- | :--- | :--- |
+| `/api/embed` | `POST` | Generates mathematical embeddings for a batch of strings. |
+| `/api/insert` | `POST` | Injects raw JSON documents into both ChromaDB and the BM25 index. |
+| `/api/chroma` | `POST` | Performs a pure Vector Semantic Search using ChromaDB. |
+| `/api/search` | `POST` | Performs a pure Lexical Keyword Search using BM25. |
+| `/api/hybrid` | `POST` | Performs a Hybrid Search combining BM25 and ChromaDB using Reciprocal Rank Fusion. |
+
+### Generative AI & Lab Endpoints (Phase 1)
+| Endpoint | Method | Description |
+| :--- | :--- | :--- |
+| `/api/chat` | `POST` | Generates a response from Gemini and records execution logs. |
+| `/api/prompt-lab` | `POST` | Renders prompt engineering templates (Zero-Shot, Few-Shot, CoT). |
+| `/api/tokenize` | `POST` | Tokenizes text and returns subword lists, IDs, and length metrics. |
+| `/api/embeddings` | `POST` | Generates vectors, K-Means clusters, and 2D scatter coordinates. |
+| `/api/compare` | `POST` | Queries Gemini, OpenAI, and Claude concurrently for latency comparison. |
+| `/api/analytics/*` | `GET/POST` | Telemetry logs (fetch, prefill mock data, reset). |
 
 ---
 
@@ -80,8 +90,9 @@ pip install -r backend/requirements.txt
 # OPENAI_API_KEY=your_key
 # ANTHROPIC_API_KEY=your_key
 
-# Run the FastAPI server via Uvicorn
-python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
+# Run the FastAPI server via Python
+cd backend
+python main.py
 ```
 *The interactive API Swagger docs will be available at:* **[http://localhost:8000/docs](http://localhost:8000/docs)**
 
