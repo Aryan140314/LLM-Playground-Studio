@@ -14,7 +14,8 @@ import {
   BarChart3, 
   Sparkles,
   Zap,
-  ZapOff
+  ZapOff,
+  Search
 } from 'lucide-react';
 
 interface SidebarItem {
@@ -29,6 +30,7 @@ const navigation: SidebarItem[] = [
   { name: 'Prompt Lab', href: '/prompt-lab', icon: Brain },
   { name: 'Tokenizer Explorer', href: '/tokenizer', icon: Fingerprint },
   { name: 'Embedding Explorer', href: '/embeddings', icon: Compass },
+  { name: 'Search Explorer', href: '/search', icon: Search },
   { name: 'Model Comparison', href: '/compare', icon: Scale },
   { name: 'Analytics Dashboard', href: '/analytics', icon: BarChart3 },
 ];
