@@ -15,23 +15,36 @@ import {
   Sparkles,
   Zap,
   ZapOff,
-  Search
+  Search,
+  FileText,
+  Scissors,
+  BookOpen,
+  PuzzleIcon,
+  MessageCircle,
+  Activity,
+  Settings,
+  Database,
+  Layers
 } from 'lucide-react';
 
 interface SidebarItem {
   name: string;
   href: string;
   icon: React.ComponentType<any>;
+  section?: string;
 }
 
 const navigation: SidebarItem[] = [
   { name: 'Dashboard', href: '/', icon: Home },
+  // Phase 1: LLM Playground
   { name: 'Chat Playground', href: '/chat', icon: MessageSquare },
   { name: 'Prompt Lab', href: '/prompt-lab', icon: Brain },
   { name: 'Tokenizer Explorer', href: '/tokenizer', icon: Fingerprint },
   { name: 'Embedding Explorer', href: '/embeddings', icon: Compass },
   { name: 'Search Explorer', href: '/search', icon: Search },
   { name: 'Model Comparison', href: '/compare', icon: Scale },
+  // Phase 3: RAG Pipeline
+  { name: 'Document Manager', href: '/documents', icon: FileText },
   { name: 'Analytics Dashboard', href: '/analytics', icon: BarChart3 },
 ];
 

@@ -1,7 +1,7 @@
 import sys
 import os
 # pyrefly: ignore [missing-import]
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
@@ -30,6 +30,11 @@ from core.search.bm25_search import BM25Search
 from core.search.hybrid_search import HybridSearch
 from typing import Dict, Any
 
+# Document Manager Imports (RAG Sprint 1)
+from core.documents.loader import DocumentLoader
+from core.documents.parser import DocumentParser
+from core.documents.metadata import DocumentManager
+
 app = FastAPI(
     title="LLM Playground Studio API",
     description="Backend API services supporting LLM Playground Studio",
@@ -53,6 +58,11 @@ rag_db_path = os.path.join(os.path.dirname(__file__), "chroma_db_api")
 rag_chroma_manager = ChromaManager(db_path=rag_db_path, collection_name="master_collection")
 rag_bm25_search = BM25Search()
 rag_hybrid_search = HybridSearch(rag_embedding_service, rag_chroma_manager, rag_bm25_search)
+
+# ------------------------------------------------
+# Document Manager (RAG Sprint 1)
+# ------------------------------------------------
+doc_manager = DocumentManager()
 
 # ------------------------------------------------
 # In-Memory Run History Telemetry (Powers Analytics)
@@ -488,6 +498,77 @@ async def api_hybrid_phase2(req: RagSearchRequest):
     try:
         results = rag_hybrid_search.search(req.query, top_k=req.top_k)
         return {"status": "success", "results": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==========================================
+# Phase 3: Document Manager API (RAG Sprint 1)
+# ==========================================
+@app.post("/api/documents/upload")
+async def api_upload_document(file: UploadFile = File(...)):
+    """Upload a document (PDF, DOCX, TXT, MD) and store it."""
+    try:
+        file_bytes = await file.read()
+        filename = file.filename or "unknown.txt"
+
+        # Load and parse the document
+        raw_text = DocumentLoader.load_from_bytes(file_bytes, filename)
+        parsed = DocumentParser.parse(raw_text, filename)
+
+        # Store document and metadata
+        metadata = doc_manager.add_document(filename, file_bytes, parsed)
+
+        return {"status": "success", "document": metadata}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/documents")
+async def api_list_documents():
+    """List all uploaded documents with metadata."""
+    documents = doc_manager.list_documents()
+    return {"status": "success", "documents": documents, "count": len(documents)}
+
+@app.get("/api/documents/{doc_id}")
+async def api_get_document(doc_id: str):
+    """Get a specific document's metadata and content."""
+    metadata = doc_manager.get_document(doc_id)
+    if not metadata:
+        raise HTTPException(status_code=404, detail=f"Document '{doc_id}' not found")
+    content = doc_manager.get_document_content(doc_id)
+    return {"status": "success", "document": metadata, "content": content}
+
+@app.delete("/api/documents/{doc_id}")
+async def api_delete_document(doc_id: str):
+    """Delete a document by ID."""
+    deleted = doc_manager.delete_document(doc_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"Document '{doc_id}' not found")
+    return {"status": "success", "message": f"Document '{doc_id}' deleted"}
+
+@app.get("/api/documents/stats/overview")
+async def api_document_stats():
+    """Get aggregate document statistics."""
+    stats = doc_manager.get_statistics()
+    return {"status": "success", "statistics": stats}
+
+@app.post("/api/documents/load-sample")
+async def api_load_sample_document():
+    """Load the sample LLM Foundations PDF for testing."""
+    try:
+        sample_path = os.path.join(os.path.dirname(__file__), "data", "sample_docs", "llm_foundations.pdf")
+        if not os.path.exists(sample_path):
+            raise HTTPException(status_code=404, detail="Sample PDF not found. Run scripts/generate_sample_pdf.py first.")
+
+        with open(sample_path, "rb") as f:
+            file_bytes = f.read()
+
+        raw_text = DocumentLoader.load(sample_path)
+        parsed = DocumentParser.parse(raw_text, "llm_foundations.pdf")
+        metadata = doc_manager.add_document("llm_foundations.pdf", file_bytes, parsed)
+
+        return {"status": "success", "document": metadata}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
