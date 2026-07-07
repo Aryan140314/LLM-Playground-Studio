@@ -35,6 +35,11 @@ from core.documents.loader import DocumentLoader
 from core.documents.parser import DocumentParser
 from core.documents.metadata import DocumentManager
 
+# Chunking Imports (RAG Sprint 2)
+from core.chunking.fixed import FixedSizeChunker
+from core.chunking.semantic import SemanticChunker
+from core.chunking.hierarchical import HierarchicalChunker
+
 app = FastAPI(
     title="LLM Playground Studio API",
     description="Backend API services supporting LLM Playground Studio",
@@ -127,6 +132,15 @@ class RagInsertDocument(BaseModel):
 
 class RagInsertRequest(BaseModel):
     documents: List[RagInsertDocument]
+
+# Chunking Request Schema (RAG Sprint 2)
+class ChunkingRequest(BaseModel):
+    text: str
+    strategy: str  # "fixed", "semantic", "hierarchical"
+    chunk_size: Optional[int] = 500
+    chunk_overlap: Optional[int] = 50
+    similarity_threshold: Optional[float] = 0.6
+    use_tokens: Optional[bool] = False
 
 # ------------------------------------------------
 # API Routes
@@ -530,23 +544,6 @@ async def api_list_documents():
     documents = doc_manager.list_documents()
     return {"status": "success", "documents": documents, "count": len(documents)}
 
-@app.get("/api/documents/{doc_id}")
-async def api_get_document(doc_id: str):
-    """Get a specific document's metadata and content."""
-    metadata = doc_manager.get_document(doc_id)
-    if not metadata:
-        raise HTTPException(status_code=404, detail=f"Document '{doc_id}' not found")
-    content = doc_manager.get_document_content(doc_id)
-    return {"status": "success", "document": metadata, "content": content}
-
-@app.delete("/api/documents/{doc_id}")
-async def api_delete_document(doc_id: str):
-    """Delete a document by ID."""
-    deleted = doc_manager.delete_document(doc_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail=f"Document '{doc_id}' not found")
-    return {"status": "success", "message": f"Document '{doc_id}' deleted"}
-
 @app.get("/api/documents/stats/overview")
 async def api_document_stats():
     """Get aggregate document statistics."""
@@ -569,6 +566,64 @@ async def api_load_sample_document():
         metadata = doc_manager.add_document("llm_foundations.pdf", file_bytes, parsed)
 
         return {"status": "success", "document": metadata}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/documents/{doc_id}")
+async def api_get_document(doc_id: str):
+    """Get a specific document's metadata and content."""
+    metadata = doc_manager.get_document(doc_id)
+    if not metadata:
+        raise HTTPException(status_code=404, detail=f"Document '{doc_id}' not found")
+    content = doc_manager.get_document_content(doc_id)
+    return {"status": "success", "document": metadata, "content": content}
+
+@app.delete("/api/documents/{doc_id}")
+async def api_delete_document(doc_id: str):
+    """Delete a document by ID."""
+    deleted = doc_manager.delete_document(doc_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"Document '{doc_id}' not found")
+    return {"status": "success", "message": f"Document '{doc_id}' deleted"}
+
+# ==========================================
+# Phase 4: Chunking Explorer API (RAG Sprint 2)
+# ==========================================
+@app.post("/api/chunking/preview")
+async def api_chunk_preview(req: ChunkingRequest):
+    """Preview document chunking using various strategies."""
+    try:
+        if req.strategy == "fixed":
+            chunker = FixedSizeChunker(
+                chunk_size=req.chunk_size or 500,
+                chunk_overlap=req.chunk_overlap or 50,
+                use_tokens=req.use_tokens or False
+            )
+        elif req.strategy == "semantic":
+            # Pass our global embedding service
+            chunker = SemanticChunker(
+                embedding_service=rag_embedding_service,
+                similarity_threshold=req.similarity_threshold or 0.6
+            )
+        elif req.strategy == "hierarchical":
+            # Compute parent & child configurations
+            parent_size = req.chunk_size or 1000
+            parent_overlap = req.chunk_overlap or 100
+            child_size = max(parent_size // 4, 100)
+            child_overlap = child_size // 10
+
+            chunker = HierarchicalChunker(
+                parent_size=parent_size,
+                parent_overlap=parent_overlap,
+                child_size=child_size,
+                child_overlap=child_overlap,
+                use_tokens=req.use_tokens or False
+            )
+        else:
+            raise HTTPException(status_code=400, detail=f"Unknown chunking strategy: {req.strategy}")
+
+        chunks = chunker.chunk(req.text)
+        return {"status": "success", "chunks": chunks, "count": len(chunks)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
