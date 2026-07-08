@@ -43,6 +43,9 @@ from core.chunking.hierarchical import HierarchicalChunker
 # Embedding Pipeline Imports (RAG Sprint 3)
 from core.rag.embedding_pipeline import EmbeddingPipeline
 
+# Indexing Imports (RAG Sprint 4)
+from core.rag.indexing import IndexingManager
+
 app = FastAPI(
     title="LLM Playground Studio API",
     description="Backend API services supporting LLM Playground Studio",
@@ -76,6 +79,11 @@ doc_manager = DocumentManager()
 # Embedding Pipeline (RAG Sprint 3)
 # ------------------------------------------------
 embedding_pipeline = EmbeddingPipeline(embedding_service=rag_embedding_service)
+
+# ------------------------------------------------
+# Indexing Manager (RAG Sprint 4)
+# ------------------------------------------------
+indexing_manager = IndexingManager(db_path=rag_db_path)
 
 # ------------------------------------------------
 # In-Memory Run History Telemetry (Powers Analytics)
@@ -153,6 +161,17 @@ class ChunkingRequest(BaseModel):
 # Embedding Pipeline Schema (RAG Sprint 3)
 class EmbeddingPipelineRequest(BaseModel):
     chunks: List[str]
+
+# Indexing Schemas (RAG Sprint 4)
+class IndexRequest(BaseModel):
+    collection_name: str
+    chunks: List[str]
+    embeddings: List[List[float]]
+    doc_id: str
+    doc_name: str
+
+class CreateCollectionRequest(BaseModel):
+    name: str
 
 # ------------------------------------------------
 # API Routes
@@ -657,6 +676,55 @@ async def api_embedding_pipeline_process(req: EmbeddingPipelineRequest):
             # We return them all since it's an API.
             "embeddings": result["embeddings"]
         }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==========================================
+# Phase 6: Indexing API (RAG Sprint 4)
+# ==========================================
+@app.get("/api/indexing/collections")
+async def api_list_collections():
+    """List all database collections with item counts."""
+    try:
+        cols = indexing_manager.list_collections()
+        return {"status": "success", "collections": cols}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/indexing/collections/create")
+async def api_create_collection(req: CreateCollectionRequest):
+    """Create a new database collection."""
+    try:
+        success = indexing_manager.create_collection(req.name)
+        if not success:
+            raise HTTPException(status_code=400, detail=f"Collection '{req.name}' already exists or invalid.")
+        return {"status": "success", "message": f"Collection '{req.name}' created"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/indexing/collections/{name}")
+async def api_delete_collection(name: str):
+    """Delete a database collection."""
+    try:
+        success = indexing_manager.delete_collection(name)
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Collection '{name}' not found.")
+        return {"status": "success", "message": f"Collection '{name}' deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/indexing/index")
+async def api_index_chunks(req: IndexRequest):
+    """Index pre-embedded document chunks into a collection."""
+    try:
+        indexed_count = indexing_manager.index_chunks(
+            collection_name=req.collection_name,
+            chunks=req.chunks,
+            embeddings=req.embeddings,
+            doc_id=req.doc_id,
+            doc_name=req.doc_name
+        )
+        return {"status": "success", "indexed_count": indexed_count}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
