@@ -46,6 +46,7 @@ const navigation: SidebarItem[] = [
   // Phase 3: RAG Pipeline
   { name: 'Document Manager', href: '/documents', icon: FileText },
   { name: 'Chunking Explorer', href: '/chunking', icon: Scissors },
+  { name: 'Embedding Pipeline', href: '/embedding-pipeline', icon: Compass },
   { name: 'Analytics Dashboard', href: '/analytics', icon: BarChart3 },
 ];
 
