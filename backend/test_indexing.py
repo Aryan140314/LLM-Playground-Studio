@@ -77,8 +77,11 @@ def main():
 
     # Clean up directory
     import shutil
-    if os.path.exists(db_path):
-        shutil.rmtree(db_path)
+    try:
+        if os.path.exists(db_path):
+            shutil.rmtree(db_path)
+    except PermissionError:
+        print(f"   [SKIP] Could not clean up temporary test database due to file lock: {db_path}")
 
     print("\n" + "=" * 60)
     print("  [PASSED] Sprint 4 Indexing Test")
