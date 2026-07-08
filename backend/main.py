@@ -40,6 +40,9 @@ from core.chunking.fixed import FixedSizeChunker
 from core.chunking.semantic import SemanticChunker
 from core.chunking.hierarchical import HierarchicalChunker
 
+# Embedding Pipeline Imports (RAG Sprint 3)
+from core.rag.embedding_pipeline import EmbeddingPipeline
+
 app = FastAPI(
     title="LLM Playground Studio API",
     description="Backend API services supporting LLM Playground Studio",
@@ -68,6 +71,11 @@ rag_hybrid_search = HybridSearch(rag_embedding_service, rag_chroma_manager, rag_
 # Document Manager (RAG Sprint 1)
 # ------------------------------------------------
 doc_manager = DocumentManager()
+
+# ------------------------------------------------
+# Embedding Pipeline (RAG Sprint 3)
+# ------------------------------------------------
+embedding_pipeline = EmbeddingPipeline(embedding_service=rag_embedding_service)
 
 # ------------------------------------------------
 # In-Memory Run History Telemetry (Powers Analytics)
@@ -141,6 +149,10 @@ class ChunkingRequest(BaseModel):
     chunk_overlap: Optional[int] = 50
     similarity_threshold: Optional[float] = 0.6
     use_tokens: Optional[bool] = False
+
+# Embedding Pipeline Schema (RAG Sprint 3)
+class EmbeddingPipelineRequest(BaseModel):
+    chunks: List[str]
 
 # ------------------------------------------------
 # API Routes
@@ -624,6 +636,27 @@ async def api_chunk_preview(req: ChunkingRequest):
 
         chunks = chunker.chunk(req.text)
         return {"status": "success", "chunks": chunks, "count": len(chunks)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==========================================
+# Phase 5: Embedding Pipeline API (RAG Sprint 3)
+# ==========================================
+@app.post("/api/embedding-pipeline/process")
+async def api_embedding_pipeline_process(req: EmbeddingPipelineRequest):
+    """Process text chunks through the embedding model."""
+    try:
+        result = embedding_pipeline.process(req.chunks)
+        return {
+            "status": "success",
+            "model_name": result["model_name"],
+            "dimension": result["dimension"],
+            "generation_time_sec": result["generation_time_sec"],
+            "chunk_count": result["chunk_count"],
+            # Return subset of vectors for front end payload sizing if needed, or all of them.
+            # We return them all since it's an API.
+            "embeddings": result["embeddings"]
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
