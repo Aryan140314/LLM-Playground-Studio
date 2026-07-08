@@ -48,6 +48,7 @@ const navigation: SidebarItem[] = [
   { name: 'Chunking Explorer', href: '/chunking', icon: Scissors },
   { name: 'Embedding Pipeline', href: '/embedding-pipeline', icon: Compass },
   { name: 'ChromaDB Indexing', href: '/indexing', icon: Database },
+  { name: 'Retrieval Explorer', href: '/retrieval', icon: BookOpen },
   { name: 'Analytics Dashboard', href: '/analytics', icon: BarChart3 },
 ];
 
