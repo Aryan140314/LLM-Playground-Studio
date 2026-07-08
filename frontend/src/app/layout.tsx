@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import SidebarLayout from "./SidebarLayout";
 import { SimulationProvider } from "../context/SimulationContext";
+import { ThemeProvider } from "../context/ThemeContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,12 +28,14 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="h-full bg-slate-950 text-slate-100 font-sans">
-        <SimulationProvider>
-          <SidebarLayout>{children}</SidebarLayout>
-        </SimulationProvider>
+      <body className="h-full font-sans transition-colors duration-200">
+        <ThemeProvider>
+          <SimulationProvider>
+            <SidebarLayout>{children}</SidebarLayout>
+          </SimulationProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
