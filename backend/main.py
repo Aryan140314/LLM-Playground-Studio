@@ -46,6 +46,9 @@ from core.rag.embedding_pipeline import EmbeddingPipeline
 # Indexing Imports (RAG Sprint 4)
 from core.rag.indexing import IndexingManager
 
+# Retrieval Imports (RAG Sprint 5)
+from core.rag.retriever import RetrievalService
+
 app = FastAPI(
     title="LLM Playground Studio API",
     description="Backend API services supporting LLM Playground Studio",
@@ -84,6 +87,11 @@ embedding_pipeline = EmbeddingPipeline(embedding_service=rag_embedding_service)
 # Indexing Manager (RAG Sprint 4)
 # ------------------------------------------------
 indexing_manager = IndexingManager(db_path=rag_db_path)
+
+# ------------------------------------------------
+# Retrieval Service (RAG Sprint 5)
+# ------------------------------------------------
+retrieval_service = RetrievalService(db_path=rag_db_path, embedding_service=rag_embedding_service)
 
 # ------------------------------------------------
 # In-Memory Run History Telemetry (Powers Analytics)
@@ -172,6 +180,12 @@ class IndexRequest(BaseModel):
 
 class CreateCollectionRequest(BaseModel):
     name: str
+
+# Retrieval Schema (RAG Sprint 5)
+class RetrievalRequest(BaseModel):
+    query: str
+    collection_name: str
+    top_k: int = 5
 
 # ------------------------------------------------
 # API Routes
@@ -725,6 +739,22 @@ async def api_index_chunks(req: IndexRequest):
             doc_name=req.doc_name
         )
         return {"status": "success", "indexed_count": indexed_count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==========================================
+# Phase 7: Retrieval API (RAG Sprint 5)
+# ==========================================
+@app.post("/api/retrieval/query")
+async def api_retrieve_chunks(req: RetrievalRequest):
+    """Retrieve Top-K relevant chunks for a search query."""
+    try:
+        results = retrieval_service.retrieve(
+            query=req.query,
+            collection_name=req.collection_name,
+            top_k=req.top_k
+        )
+        return {"status": "success", "results": results}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
