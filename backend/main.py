@@ -49,6 +49,18 @@ from core.rag.indexing import IndexingManager
 # Retrieval Imports (RAG Sprint 5)
 from core.rag.retriever import RetrievalService
 
+# Prompt Builder Imports (RAG Sprint 6)
+from core.rag.prompt_builder import PromptBuilder
+
+# Generation Imports (RAG Sprint 7)
+from core.rag.generation import RagGenerator
+
+# Retrieval Comparison Imports (RAG Sprint 9)
+from core.rag.retrieval_comparison import RetrievalComparer
+
+# Evaluation Imports (RAG Sprint 10)
+from core.rag.evaluation import RagEvaluator
+
 app = FastAPI(
     title="LLM Playground Studio API",
     description="Backend API services supporting LLM Playground Studio",
@@ -92,6 +104,29 @@ indexing_manager = IndexingManager(db_path=rag_db_path)
 # Retrieval Service (RAG Sprint 5)
 # ------------------------------------------------
 retrieval_service = RetrievalService(db_path=rag_db_path, embedding_service=rag_embedding_service)
+
+# ------------------------------------------------
+# Prompt Builder (RAG Sprint 6)
+# ------------------------------------------------
+prompt_builder = PromptBuilder()
+
+# ------------------------------------------------
+# RAG Generator (RAG Sprint 7)
+# ------------------------------------------------
+rag_generator = RagGenerator(prompt_builder=prompt_builder)
+
+# ------------------------------------------------
+# Retrieval Comparison (RAG Sprint 9)
+# ------------------------------------------------
+retrieval_comparer = RetrievalComparer(
+    retrieval_service=retrieval_service,
+    hybrid_search=rag_hybrid_search
+)
+
+# ------------------------------------------------
+# RAG Evaluator (RAG Sprint 10)
+# ------------------------------------------------
+rag_evaluator = RagEvaluator()
 
 # ------------------------------------------------
 # In-Memory Run History Telemetry (Powers Analytics)
@@ -186,6 +221,34 @@ class RetrievalRequest(BaseModel):
     query: str
     collection_name: str
     top_k: int = 5
+
+# Prompt Builder Schemas (RAG Sprint 6)
+class PromptBuilderRequest(BaseModel):
+    question: str
+    contexts: List[Dict[str, Any]]
+    system_instructions: Optional[str] = None
+
+# Generation Schema (RAG Sprint 7)
+class NaiveRagRequest(BaseModel):
+    question: str
+    collection_name: str
+    top_k: int = 3
+    system_instructions: Optional[str] = None
+    simulate: bool = False
+
+# Retrieval Comparison Schema (RAG Sprint 9)
+class RetrievalCompareRequest(BaseModel):
+    query: str
+    collection_name: str
+    top_k: int = 3
+    simulate: bool = False
+
+# Evaluation Schema (RAG Sprint 10)
+class EvaluationRequest(BaseModel):
+    question: str
+    answer: str
+    contexts: List[Dict[str, Any]]
+    simulate: bool = False
 
 # ------------------------------------------------
 # API Routes
@@ -755,6 +818,145 @@ async def api_retrieve_chunks(req: RetrievalRequest):
             top_k=req.top_k
         )
         return {"status": "success", "results": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==========================================
+# Phase 8: Prompt Builder API (RAG Sprint 6)
+# ==========================================
+@app.post("/api/prompt-builder/build")
+async def api_build_grounded_prompt(req: PromptBuilderRequest):
+    """Build grounded context prompts for LLM inputs."""
+    try:
+        result = prompt_builder.build_prompt(
+            question=req.question,
+            contexts=req.contexts,
+            system_instructions=req.system_instructions
+        )
+        return {
+            "status": "success",
+            "full_prompt": result["full_prompt"],
+            "system_instructions": result["system_instructions"],
+            "context_block": result["context_block"],
+            "char_count": result["char_count"],
+            "word_count": result["word_count"],
+            "token_count": result["token_count"]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==========================================
+# Phase 9: Naive RAG Generation API (RAG Sprint 7)
+# ==========================================
+@app.post("/api/rag/generation")
+async def api_generate_naive_rag(req: NaiveRagRequest):
+    """Execute end-to-end Naive RAG pipeline (retrieve -> prompt -> generate)."""
+    try:
+        # 1. Retrieve relevant contexts
+        contexts = retrieval_service.retrieve(
+            query=req.question,
+            collection_name=req.collection_name,
+            top_k=req.top_k
+        )
+        
+        # 2. Generate grounded response
+        result = rag_generator.generate_naive_rag(
+            question=req.question,
+            contexts=contexts,
+            system_instructions=req.system_instructions,
+            simulate=req.simulate
+        )
+        
+        # Log generation to telemetry run history
+        log_api_run(
+            model_name=result["model"],
+            strategy="Naive RAG",
+            prompt=result["full_prompt"],
+            success=result["success"],
+            response_time=result["response_time"],
+            word_count=result["word_count"],
+            character_count=result["char_count"]
+        )
+        
+        return {
+            "status": "success",
+            "answer": result["answer"],
+            "full_prompt": result["full_prompt"],
+            "retrieved_contexts": contexts,
+            "response_time": result["response_time"],
+            "word_count": result["word_count"],
+            "token_count": result["token_count"]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==========================================
+# Phase 10: Retrieval Comparison API (RAG Sprint 9)
+# ==========================================
+@app.post("/api/retrieval/compare")
+async def api_compare_retrieval_strategies(req: RetrievalCompareRequest):
+    """Run side-by-side queries on Naive, Hybrid, HyDE, and Multi-Query strategies."""
+    try:
+        # Run Naive
+        naive_chunks = retrieval_comparer.run_naive(
+            query=req.query,
+            collection_name=req.collection_name,
+            top_k=req.top_k
+        )
+        
+        # Run Hybrid
+        hybrid_chunks = retrieval_comparer.run_hybrid(
+            query=req.query,
+            top_k=req.top_k
+        )
+        
+        # Run HyDE
+        hyde_res = retrieval_comparer.run_hyde(
+            query=req.query,
+            collection_name=req.collection_name,
+            top_k=req.top_k,
+            simulate=req.simulate
+        )
+        
+        # Run Multi-Query
+        mq_res = retrieval_comparer.run_multiquery(
+            query=req.query,
+            collection_name=req.collection_name,
+            top_k=req.top_k,
+            simulate=req.simulate
+        )
+        
+        return {
+            "status": "success",
+            "naive": naive_chunks,
+            "hybrid": hybrid_chunks,
+            "hyde": hyde_res,
+            "multiquery": mq_res
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==========================================
+# Phase 11: RAG Evaluation API (RAG Sprint 10)
+# ==========================================
+@app.post("/api/rag/evaluate")
+async def api_evaluate_rag_performance(req: EvaluationRequest):
+    """Run validation checks (Faithfulness, Relevancy, Recall) on a RAG output."""
+    try:
+        metrics = rag_evaluator.evaluate(
+            question=req.question,
+            answer=req.answer,
+            contexts=req.contexts,
+            simulate=req.simulate
+        )
+        return {
+            "status": "success",
+            "faithfulness": metrics["faithfulness"],
+            "relevancy": metrics["relevancy"],
+            "recall": metrics["recall"],
+            "overall_rag_score": metrics["overall_rag_score"],
+            "details": metrics["details"]
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
