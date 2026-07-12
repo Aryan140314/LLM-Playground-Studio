@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from core.embeddings.embedding_service import EmbeddingService
 from core.vectordb.chroma_manager import ChromaManager
 from core.search.bm25_search import BM25Search
@@ -24,13 +24,14 @@ class HybridSearch:
         self.bm25_search = bm25_search
         self.rrf_k = rrf_k
 
-    def search(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
+    def search(self, query: str, top_k: int = 5, collection_name: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Executes a hybrid search and merges the results.
         
         Args:
             query: The user's search query.
             top_k: Number of final results to return.
+            collection_name: Optional collection name to filter and search documents.
             
         Returns:
             A list of dictionary results ranked by hybrid score.
@@ -40,11 +41,17 @@ class HybridSearch:
         search_depth = max(top_k * 2, 10)
         
         # 1. Execute Lexical (BM25) Search
-        bm25_results = self.bm25_search.search(query, top_k=search_depth)
+        bm25_results = self.bm25_search.search(query, top_k=search_depth, collection_name=collection_name)
         
         # 2. Execute Semantic (ChromaDB) Search
         query_embedding = self.embedding_service.generate_embedding(query)
-        chroma_raw = self.chroma_manager.query(query_embeddings=[query_embedding], n_results=search_depth)
+        
+        if collection_name:
+            manager = ChromaManager(db_path=self.chroma_manager.db_path, collection_name=collection_name)
+        else:
+            manager = self.chroma_manager
+            
+        chroma_raw = manager.query(query_embeddings=[query_embedding], n_results=search_depth)
         
         # Reformat Chroma results into a clean list of dictionaries
         semantic_results = []
