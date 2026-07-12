@@ -12,7 +12,14 @@ class GeminiClient:
     """
 
     def __init__(self):
-        self.client = genai.Client(api_key=GEMINI_API_KEY)
+        self._client = None
+
+    @property
+    def client(self):
+        if self._client is None:
+            from config.api_keys import GEMINI_API_KEY
+            self._client = genai.Client(api_key=GEMINI_API_KEY)
+        return self._client
 
     def generate_response(self, prompt: str, simulate: bool = False):
         """
@@ -21,7 +28,24 @@ class GeminiClient:
         if simulate:
             start_time = time.time()
             time.sleep(random.uniform(0.4, 0.9)) # Simulate latency
-            text = f"[SIMULATED GEMINI 2.5 FLASH]\n\nHere is a simulated response to your request: '{prompt}'\n\nGemini 2.5 Flash is optimized for high-speed tasks, multimodal reasoning, and efficient generation."
+            
+            # If the prompt contains a Question/Context pattern, extract the question
+            # or generate a beautiful realistic response instead of echoing the raw prompt
+            q_marker = "Question:\n"
+            if q_marker in prompt:
+                try:
+                    question = prompt.split(q_marker)[1].split("\n")[0].strip()
+                except Exception:
+                    question = "your query"
+            else:
+                question = prompt[:100] + "..." if len(prompt) > 100 else prompt
+
+            text = (
+                f"[SIMULATED GEMINI 2.5 FLASH]\n\n"
+                f"Based on retrieved context, here is a simulated response to your question: \"{question}\"\n\n"
+                f"The hybrid retrieval layer matched relevant passages from the corpus. Since you are running in Simulation Mode, "
+                f"this mock response is generated to save your API quota. Toggle Live API Mode in the sidebar footer to query the real Gemini model."
+            )
             end_time = time.time()
             return {
                 "success": True,
@@ -59,6 +83,7 @@ class GeminiClient:
             try:
                 start_time = time.time()
                 url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+                from config.api_keys import GEMINI_API_KEY
                 headers = {
                     "x-goog-api-key": GEMINI_API_KEY,
                     "Content-Type": "application/json"
