@@ -1,11 +1,12 @@
 import sys
 import os
+import random
 # pyrefly: ignore [missing-import]
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Add the current directory to sys.path to enable local imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -82,7 +83,7 @@ app.add_middleware(
 rag_embedding_service = EmbeddingService()
 rag_db_path = os.path.join(os.path.dirname(__file__), "chroma_db_api")
 rag_chroma_manager = ChromaManager(db_path=rag_db_path, collection_name="master_collection")
-rag_bm25_search = BM25Search()
+rag_bm25_search = BM25Search(persist_path=os.path.join(rag_db_path, "bm25_index.pkl"))
 rag_hybrid_search = HybridSearch(rag_embedding_service, rag_chroma_manager, rag_bm25_search)
 
 # ------------------------------------------------
@@ -511,12 +512,9 @@ async def api_prefill_analytics():
     
     # Prefill 30 mock runs over past 48 hours
     for i in range(30):
-        model = random.choice(models) if 'random' in sys.modules else "GPT-4o-mini"
-        # Quick fallback import if random not in modules
-        import random as rnd
-        model = rnd.choice(models)
-        strategy = rnd.choice(strategies)
-        success = rnd.choices([True, False], weights=[92, 8])[0]
+        model = random.choice(models)
+        strategy = random.choice(strategies)
+        success = random.choices([True, False], weights=[92, 8])[0]
         
         if not success:
             latency = 0.0
@@ -525,19 +523,19 @@ async def api_prefill_analytics():
             prompt = "An invalid or aborted request occurred."
         else:
             if "Gemini" in model:
-                latency = round(rnd.uniform(0.3, 1.1), 2)
+                latency = round(random.uniform(0.3, 1.1), 2)
                 prompt = "Explain quantum computing in basic terms."
             elif "GPT" in model:
-                latency = round(rnd.uniform(0.6, 1.6), 2)
+                latency = round(random.uniform(0.6, 1.6), 2)
                 prompt = "Write a quicksort helper function in Go."
             else: # Claude
-                latency = round(rnd.uniform(0.8, 2.4), 2)
+                latency = round(random.uniform(0.8, 2.4), 2)
                 prompt = "Draft an introductory pitch email to investors."
                 
-            words = rnd.randint(30, 300)
-            chars = int(words * rnd.uniform(4.8, 5.5))
+            words = random.randint(30, 300)
+            chars = int(words * random.uniform(4.8, 5.5))
             
-        time_offset = now - timedelta(hours=rnd.randint(1, 48), minutes=rnd.randint(0, 59))
+        time_offset = now - timedelta(hours=random.randint(1, 48), minutes=random.randint(0, 59))
         
         run_history.append({
             "timestamp": time_offset.strftime("%Y-%m-%d %H:%M:%S"),
@@ -581,7 +579,7 @@ async def api_insert_phase2(req: RagInsertRequest):
         embeddings = rag_embedding_service.generate_batch_embeddings(contents)
         rag_chroma_manager.insert_embeddings(ids=ids, embeddings=embeddings, documents=contents, metadatas=metadatas)
         
-        dict_docs = [{"id": d.id, "title": d.title, "content": d.content, **d.metadata} for d in req.documents]
+        dict_docs = [{"id": d.id, "title": d.title, "content": d.content, "collection_name": "master_collection", **d.metadata} for d in req.documents]
         rag_bm25_search.add_documents(dict_docs)
         
         return {"status": "success", "inserted": len(req.documents)}
@@ -801,6 +799,20 @@ async def api_index_chunks(req: IndexRequest):
             doc_id=req.doc_id,
             doc_name=req.doc_name
         )
+        
+        # Also index to BM25 for hybrid search support!
+        dict_docs = []
+        for i, chunk in enumerate(req.chunks):
+            dict_docs.append({
+                "id": f"{req.doc_id}_ch{i+1}",
+                "title": req.doc_name,
+                "content": chunk,
+                "collection_name": req.collection_name,
+                "doc_id": req.doc_id,
+                "doc_name": req.doc_name
+            })
+        rag_bm25_search.add_documents(dict_docs)
+        
         return {"status": "success", "indexed_count": indexed_count}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -907,6 +919,7 @@ async def api_compare_retrieval_strategies(req: RetrievalCompareRequest):
         # Run Hybrid
         hybrid_chunks = retrieval_comparer.run_hybrid(
             query=req.query,
+            collection_name=req.collection_name,
             top_k=req.top_k
         )
         
