@@ -53,7 +53,7 @@ export default function RetrievalExplorer() {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!query.strip && !query.trim()) return;
+    if (!query.trim()) return;
     if (!selectedColName) {
       setError('Please select a collection to query.');
       return;
