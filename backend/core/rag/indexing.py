@@ -69,9 +69,12 @@ class IndexingManager:
         """
         try:
             self.client.delete_collection(name=name)
+            from core.vectordb.chroma_manager import ChromaManager
+            ChromaManager.clear_collection_cache(self.db_path, name)
             return True
         except Exception:
             return False
+
 
     def index_chunks(
         self,
