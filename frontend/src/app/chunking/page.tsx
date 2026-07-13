@@ -86,7 +86,7 @@ export default function ChunkingExplorer() {
   };
 
   const handleRunChunking = async () => {
-    if (!rawText.strip && !rawText.trim()) {
+    if (!rawText.trim()) {
       setError('Please provide text or select a document first.');
       return;
     }
