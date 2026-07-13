@@ -1,0 +1,35 @@
+[
+  {
+    "id": "86df1728",
+    "filename": "report-Publication.pdf",
+    "stored_name": "86df1728.pdf",
+    "file_type": "PDF",
+    "file_size_bytes": 1226698,
+    "page_count": 11,
+    "word_count": 3710,
+    "char_count": 27806,
+    "uploaded_at": "2026-07-08 11:26:06"
+  },
+  {
+    "id": "e21ea37a",
+    "filename": "rag_paper.pdf",
+    "stored_name": "e21ea37a.pdf",
+    "file_type": "PDF",
+    "file_size_bytes": 885323,
+    "page_count": 18,
+    "word_count": 9935,
+    "char_count": 69147,
+    "uploaded_at": "2026-07-08 12:24:13"
+  },
+  {
+    "id": "988cc5e8",
+    "filename": "gene report test.pdf",
+    "stored_name": "988cc5e8.pdf",
+    "file_type": "PDF",
+    "file_size_bytes": 4116199,
+    "page_count": 30,
+    "word_count": 11036,
+    "char_count": 79639,
+    "uploaded_at": "2026-07-12 15:51:46"
+  }
+]
