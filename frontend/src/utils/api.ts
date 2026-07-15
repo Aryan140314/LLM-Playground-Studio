@@ -10,10 +10,10 @@ export async function postData(endpoint: string, body: any) {
   });
   
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({ detail: 'Request failed' }));
-    throw new Error(errorData.detail || 'Request failed');
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || errorData.message || 'Request failed');
   }
-  return res.ok ? res.json() : null;
+  return res.json();
 }
 
 export async function getData(endpoint: string) {
@@ -25,8 +25,9 @@ export async function getData(endpoint: string) {
   });
   
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({ detail: 'Request failed' }));
-    throw new Error(errorData.detail || 'Request failed');
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || errorData.message || 'Request failed');
   }
   return res.json();
 }
+

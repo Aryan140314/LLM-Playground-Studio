@@ -24,7 +24,10 @@ import {
   Database,
   Layers,
   Sun,
-  Moon
+  Moon,
+  Puzzle,
+  MessageCircle,
+  Activity
 } from 'lucide-react';
 
 interface SidebarItem {
@@ -43,13 +46,18 @@ const navigation: SidebarItem[] = [
   { name: 'Search Explorer', section: 'PLAYGROUND', href: '/search', icon: Search },
   { name: 'Model Comparison', section: 'PLAYGROUND', href: '/compare', icon: Scale },
   
+  // Phase 3: RAG Pipeline
   { name: 'Document Manager', section: 'RAG PIPELINE', href: '/documents', icon: FileText },
   { name: 'Chunking Explorer', section: 'RAG PIPELINE', href: '/chunking', icon: Scissors },
   { name: 'Embedding Pipeline', section: 'RAG PIPELINE', href: '/embedding-pipeline', icon: Compass },
   { name: 'ChromaDB Indexing', section: 'RAG PIPELINE', href: '/indexing', icon: Database },
   { name: 'Retrieval Explorer', section: 'RAG PIPELINE', href: '/retrieval', icon: BookOpen },
+  { name: 'Prompt Builder', section: 'RAG PIPELINE', href: '/prompt-builder', icon: Puzzle },
+  { name: 'RAG Playground', section: 'RAG PIPELINE', href: '/rag-playground', icon: MessageCircle },
+  { name: 'Retrieval Comparison', section: 'RAG PIPELINE', href: '/compare-retrieval', icon: Activity },
   
   { name: 'Analytics Dashboard', section: 'ANALYTICS', href: '/analytics', icon: BarChart3 },
+  { name: 'Evaluation Dashboard', section: 'ANALYTICS', href: '/evaluation', icon: BarChart3 },
 ];
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {

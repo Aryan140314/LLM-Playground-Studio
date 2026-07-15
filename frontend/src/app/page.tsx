@@ -129,47 +129,41 @@ const modules: CardItem[] = [
     shadow: 'shadow-cyan-500/5 hover:shadow-cyan-500/15',
     category: 'RAG PIPELINE'
   },
-
-  // UPCOMING WORK
   {
-    title: 'Prompt Builder (Sprint 6)',
+    title: 'Prompt Builder',
     desc: 'Inject retrieved document fragments into system instructions for LLM grounding preview.',
-    href: '#',
+    href: '/prompt-builder',
     icon: Puzzle,
-    color: 'from-slate-650 to-slate-750',
-    shadow: '',
-    category: 'UPCOMING',
-    locked: true
+    color: 'from-blue-600 to-indigo-600',
+    shadow: 'shadow-blue-600/5 hover:shadow-blue-600/15',
+    category: 'RAG PIPELINE'
   },
   {
-    title: 'RAG Playground (Sprints 7 & 8)',
+    title: 'RAG Playground',
     desc: 'Run a full end-to-end RAG chat pipeline with citations referencing page numbers and similarities.',
-    href: '#',
+    href: '/rag-playground',
     icon: MessageCircle,
-    color: 'from-slate-650 to-slate-750',
-    shadow: '',
-    category: 'UPCOMING',
-    locked: true
+    color: 'from-pink-500 to-rose-500',
+    shadow: 'shadow-pink-500/5 hover:shadow-pink-500/15',
+    category: 'RAG PIPELINE'
   },
   {
-    title: 'Retrieval Comparison (Sprint 9)',
+    title: 'Retrieval Comparison',
     desc: 'Compare advanced retrieval models (Naive vs Hybrid vs HyDE vs Multi-Query) side-by-side.',
-    href: '#',
+    href: '/compare-retrieval',
     icon: Activity,
-    color: 'from-slate-650 to-slate-750',
-    shadow: '',
-    category: 'UPCOMING',
-    locked: true
+    color: 'from-teal-500 to-emerald-500',
+    shadow: 'shadow-teal-500/5 hover:shadow-teal-500/15',
+    category: 'RAG PIPELINE'
   },
   {
-    title: 'Evaluation Dashboard (Sprint 10)',
+    title: 'Evaluation Dashboard',
     desc: 'Automate RAGAS metrics measuring Faithfulness, Answer Relevancy, and Context Recall.',
-    href: '#',
+    href: '/evaluation',
     icon: BarChart3,
-    color: 'from-slate-650 to-slate-750',
-    shadow: '',
-    category: 'UPCOMING',
-    locked: true
+    color: 'from-emerald-500 to-indigo-500',
+    shadow: 'shadow-emerald-500/5 hover:shadow-emerald-500/15',
+    category: 'RAG PIPELINE'
   }
 ];
 
